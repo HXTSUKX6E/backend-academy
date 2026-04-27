@@ -1,0 +1,5 @@
+Benchmark                               Mode  Cnt  Score   Error  Units
+StudentNameBenchmark.direct             avgt    5  0,408 ± 0,008  ns/op
+StudentNameBenchmark.lambdaMetafactory  avgt    5  0,505 ± 0,034  ns/op
+StudentNameBenchmark.methodHandles      avgt    5  2,186 ± 0,028  ns/op
+StudentNameBenchmark.reflection         avgt    5  4,719 ± 0,032  ns/op

@@ -1,0 +1,29 @@
+image: $DOCKER_IMAGE
+
+variables:
+  MAVEN_CLI_OPTS: "--batch-mode -Dmaven.repo.local=.m2/repository"
+
+acceptance_test_java:
+  extends: .acceptance_test
+  variables:
+    DOCKERFILE: deploy/app-java/Dockerfile
+    GITLAB_DOCKER_PROXY: $GITLAB_HOST/backend-academy-java-2025/lecture-materials/dependency_proxy/containers
+    DOCKER_IMAGE: maven:3.9.11-eclipse-temurin-24-noble
+
+build_java:
+  stage: build
+  script:
+#    - mvn verify $MAVEN_CLI_OPTS
+    - echo "Build stage example"
+  only:
+    - merge_requests
+    - master
+
+lint_java:
+  stage: validate
+  script:
+#    - mvn clean compile $MAVEN_CLI_OPTS -am spotless:check modernizer:modernizer spotbugs:check pmd:check pmd:cpd-check
+    - echo "Validate stage example"
+  only:
+    - merge_requests
+    - master

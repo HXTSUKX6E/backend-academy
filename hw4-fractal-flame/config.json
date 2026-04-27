@@ -1,0 +1,56 @@
+{
+    "size": {
+        "width": 1800,
+        "height": 1800
+    },
+    "iteration_count": 100000000,
+    "threads": 4,
+    "seed": 911999,
+    "symmetry_level": 2,
+    "gamma_correction": true,
+    "gamma": 2.2,
+    "output_path": "bright_fractal.png",
+    "viewport": {
+        "xmin": -1.2,
+        "xmax": 1.2,
+        "ymin": -1.2,
+        "ymax": 1.2
+    },
+    "functions": [
+        {
+            "name": "swirl",
+            "weight": 1.0,
+            "r": 255,
+            "g": 52,
+            "b": 12
+        },
+        {
+            "name": "spiral",
+            "weight": 1.2,
+            "r": 50,
+            "g": 255,
+            "b": 50
+        },
+        {
+            "name": "disc",
+            "weight": 1.0,
+            "r": 50,
+            "g": 50,
+            "b": 255
+        }
+    ],
+    "affine_params": [
+        {
+            "a": 0.8, "b": 0.0, "c": 0.0,
+            "d": 0.8, "e": -0.1, "f": 0.0
+        },
+        {
+            "a": -0.6, "b": 0.0, "c": 0.0,
+            "d": 0.6, "e": 1.0, "f": 0.0
+        },
+        {
+            "a": 0.5, "b": 0.0, "c": 0.0,
+            "d": -0.5, "e": 0.5, "f": 0.866
+        }
+    ]
+}

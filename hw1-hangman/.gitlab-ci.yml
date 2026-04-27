@@ -1,0 +1,37 @@
+include:
+  - local: "deploy/app-java/gitlab-ci.yml"
+    rules:
+      - if: $P_LANG == "java"  || $P_LANG == "" || $P_LANG == null
+
+variables:
+#  P_LANG: "java" # Default value, may be overridden via GitLab CI/CD UI
+  GITLAB_HOST: gitlab.education.tbank.ru:443
+
+stages:
+  - acceptance
+  - build
+  - validate
+
+.acceptance_test:
+  stage: acceptance
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: /certs
+    DOCKER_TLS_VERIFY: 1
+    DOCKER_CERT_PATH: $DOCKER_TLS_CERTDIR/client
+  image: docker
+  tags:
+    - dind
+  services:
+    - name: docker:dind
+      alias: docker
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" || $CI_COMMIT_BRANCH == "master"
+      when: always
+      allow_failure: false
+    - when: never
+  before_script:
+    - echo "$CI_JOB_TOKEN" | docker login "$GITLAB_HOST" -u gitlab-ci-token --password-stdin
+  script:
+    - docker pull "$GITLAB_DOCKER_PROXY"/"$DOCKER_IMAGE"
+    - sh scripts/run_acceptance_tests.sh $CI_PROJECT_NAME $DOCKERFILE

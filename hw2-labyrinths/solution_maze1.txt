@@ -1,0 +1,4 @@
+aze solution
+Path length: 97
+Start: Point[x=1, y=1]
+End: Point[x=9, y=9]
