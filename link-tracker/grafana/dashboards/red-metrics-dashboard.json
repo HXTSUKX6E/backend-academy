@@ -1,0 +1,217 @@
+{
+  "id": null,
+  "uid": "linktracker-red",
+  "title": "LinkTracker — Standard Metrics (RED)",
+  "tags": ["linktracker", "red"],
+  "timezone": "browser",
+  "schemaVersion": 37,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "application",
+        "label": "Application",
+        "type": "custom",
+        "query": "bot,scrapper",
+        "current": { "text": "scrapper", "value": "scrapper" },
+        "options": [
+          { "text": "bot", "value": "bot", "selected": false },
+          { "text": "scrapper", "value": "scrapper", "selected": true }
+        ],
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "skipUrlSync": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Rate — HTTP Requests per Second",
+      "description": "Number of HTTP requests processed per second (Rate)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"$application\"}[5m])) by (uri, method)",
+          "legendFormat": "{{method}} {{uri}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Errors — HTTP Error Rate per Second",
+      "description": "Number of failed HTTP requests per second (Errors)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"$application\", outcome=~\"CLIENT_ERROR|SERVER_ERROR\"}[5m])) by (status, uri)",
+          "legendFormat": "{{status}} {{uri}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": { "mode": "fixed", "fixedColor": "red" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Duration — HTTP Request Latency Percentiles",
+      "description": "P50, P95, P99 HTTP request latency in seconds (Duration/Latency)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{job=\"$application\"}[5m])) by (le))",
+          "legendFormat": "P50",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"$application\"}[5m])) by (le))",
+          "legendFormat": "P95",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=\"$application\"}[5m])) by (le))",
+          "legendFormat": "P99",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      }
+    },
+    {
+      "id": 4,
+      "title": "JVM Heap Memory Usage",
+      "description": "JVM heap memory used by the application over time",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(jvm_memory_used_bytes{job=\"$application\", area=\"heap\"}) by (id)",
+          "legendFormat": "heap: {{id}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      }
+    },
+    {
+      "id": 5,
+      "title": "JVM Non-Heap Memory Usage",
+      "description": "JVM non-heap (metaspace, code cache, etc.) memory used by the application",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(jvm_memory_used_bytes{job=\"$application\", area=\"nonheap\"}) by (id)",
+          "legendFormat": "nonheap: {{id}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      }
+    },
+    {
+      "id": 6,
+      "title": "Error Rate % of Total",
+      "description": "Percentage of failed requests from total (error ratio)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"$application\", outcome=~\"CLIENT_ERROR|SERVER_ERROR\"}[5m])) / sum(rate(http_server_requests_seconds_count{job=\"$application\"}[5m])) * 100",
+          "legendFormat": "Error %",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background"
+      }
+    }
+  ],
+  "annotations": { "list": [] },
+  "links": []
+}

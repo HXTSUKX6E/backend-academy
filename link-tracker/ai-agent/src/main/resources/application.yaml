@@ -1,0 +1,63 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: ai-agent
+  config:
+    import: optional:file:../.env[.properties]
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: ai-agent-consumers
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.value.delegate.class: io.confluent.kafka.serializers.KafkaAvroDeserializer
+        specific.avro.reader: true
+        schema.registry.url: ${SCHEMA_REGISTRY_URL:http://localhost:8082}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
+      properties:
+        schema.registry.url: ${SCHEMA_REGISTRY_URL:http://localhost:8082}
+
+ai-agent:
+  kafka:
+    raw-topic: link.raw-updates
+    processed-topic: link.processed-updates
+    raw-topic-partitions: 3
+    raw-topic-replicas: 1
+    processed-topic-partitions: 3
+    processed-topic-replicas: 1
+    consumer:
+      max-attempts: 3
+      backoff-interval: 1000
+  filtering:
+    stop-words:
+      - spam
+      - ads
+      - promo
+    excluded-authors:
+      - bot-user
+    min-length: 20
+  summarization:
+    threshold: 500
+    hugging-face:
+      api-key: ${HUGGING_FACE_API_KEY:}
+      base-url: ${HUGGING_FACE_BASE_URL:https://api-inference.huggingface.co}
+      model: ${HUGGING_FACE_MODEL:facebook/bart-large-cnn}
+  prioritization:
+    high-keywords:
+      - critical
+      - urgent
+      - breaking
+      - security
+    low-keywords:
+      - minor
+      - typo
+      - chore
+      - docs
+  grouping:
+    window-ms: 30000

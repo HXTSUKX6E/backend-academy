@@ -1,0 +1,84 @@
+server:
+  port: 8080
+
+management:
+  server:
+    port: 8011
+  endpoints:
+    web:
+      base-path: /
+      exposure:
+        include: prometheus, health, info
+      path-mapping:
+        prometheus: metrics
+  endpoint:
+    prometheus:
+      enabled: true
+    health:
+      enabled: true
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+
+spring:
+  application:
+    name: bot
+  config:
+    import: optional:file:../.env[.properties]
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: bot-consumers
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.value.delegate.class: io.confluent.kafka.serializers.KafkaAvroDeserializer
+        specific.avro.reader: true
+        schema.registry.url: ${SCHEMA_REGISTRY_URL:http://localhost:8082}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
+      properties:
+        schema.registry.url: ${SCHEMA_REGISTRY_URL:http://localhost:8082}
+
+app:
+  telegram:
+    url: https://api.telegram.org/bot
+    token: ${TELEGRAM_TOKEN} # Use env variable. DO NOT KEEP TOKEN HERE
+    update-listener-sleep: 1s
+    debug: false
+    polling:
+      enabled: true
+
+  scrapper:
+    base-url: ${SCRAPPER_BASE_URL:http://localhost:8081}
+
+  grpc:
+    port: ${BOT_GRPC_PORT:8090}
+
+  kafka:
+    topic: link.processed-updates
+    consumer:
+      max-attempts: 3
+      backoff-interval: 1000
+
+  http-client:
+    connect-timeout: ${HTTP_CONNECT_TIMEOUT:3s}
+    read-timeout: ${HTTP_READ_TIMEOUT:5s}
+
+  retry:
+    max-attempts: ${RETRY_MAX_ATTEMPTS:3}
+    wait-duration: ${RETRY_WAIT_DURATION:500ms}
+
+  circuit-breaker:
+    sliding-window-size: ${CB_WINDOW_SIZE:10}
+    failure-rate-threshold: ${CB_FAILURE_RATE:50}
+    wait-duration-in-open-state: ${CB_WAIT_OPEN:10s}
+    permitted-calls-in-half-open-state: ${CB_HALF_OPEN_CALLS:3}
+  metrics:
+    pushgateway:
+      enabled: ${PUSHGATEWAY_ENABLED:false}
+      base-url: ${PUSHGATEWAY_URL:http://localhost:9091}
+      push-rate: ${PUSHGATEWAY_PUSH_RATE:15000}

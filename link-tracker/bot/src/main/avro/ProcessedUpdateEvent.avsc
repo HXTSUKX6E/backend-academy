@@ -1,0 +1,12 @@
+{
+    "type": "record",
+    "name": "ProcessedUpdateEvent",
+    "namespace": "com.example.notification",
+    "fields": [
+        {"name": "id", "type": "long", "doc": "ID ссылки"},
+        {"name": "url", "type": {"type": "string", "avro.java.string": "String"}, "doc": "Ссылка"},
+        {"name": "description", "type": {"type": "string", "avro.java.string": "String"}, "doc": "Обработанный текст обновления"},
+        {"name": "tgChatIds", "type": {"type": "array", "items": "long"}, "doc": "ИД чатов"},
+        {"name": "priority", "type": {"type": "string", "avro.java.string": "String"}, "default": "NORMAL", "doc": "Приоритет"}
+    ]
+}

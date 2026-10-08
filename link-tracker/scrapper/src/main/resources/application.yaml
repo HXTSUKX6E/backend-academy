@@ -1,0 +1,97 @@
+server:
+  port: 8081
+
+management:
+  endpoints:
+    web:
+      base-path: /
+      exposure:
+        include: prometheus, health, info
+      path-mapping:
+        prometheus: metrics
+  endpoint:
+    prometheus:
+      enabled: true
+    health:
+      enabled: true
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+
+spring:
+  application:
+    name: scrapper
+  config:
+    import: optional:file:.env[.properties]
+  data:
+    redis:
+      host: ${VALKEY_HOST:localhost}
+      port: ${VALKEY_PORT:6379}
+      timeout: 2000ms
+      connect-timeout: 2000ms
+  datasource:
+    url: ${SCRAPPER_DB_URL:jdbc:postgresql://localhost:5432/scrapper}
+    username: ${SCRAPPER_DB_USERNAME:postgres}
+    password: ${SCRAPPER_DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  liquibase:
+    change-log: classpath:migrations/master.xml
+    jpa:
+      hibernate:
+        ddl-auto: none
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
+      properties:
+        schema.registry.url: ${SCHEMA_REGISTRY_URL:http://localhost:8082}
+
+app:
+  database-access-type: ${SCRAPPER_DB_ACCESS_TYPE:sql}
+  stackoverflow:
+    key: ${STACKOVERFLOW_KEY:test-key}
+    access-token: ${STACKOVERFLOW_ACCESS_KEY:test-access-key}
+  github:
+    token: ${GITHUB_TOKEN:test-token}
+  bot:
+    base-url: ${BOT_BASE_URL:http://localhost:8080}
+    protocol: ${BOT_PROTOCOL:kafka-outbox}
+    grpc-host: ${BOT_GRPC_HOST:localhost}
+    grpc-port: ${BOT_GRPC_PORT:8090}
+  kafka:
+    topic: link.raw-updates
+    topic-partitions: 3
+    topic-replicas: 3
+  outbox:
+    poll-interval: 5000
+    batch-size: 100
+  scheduler:
+    delay: 60000
+    batch-size: 100
+    thread-count: 4
+  cache:
+    links-ttl: ${CACHE_LINKS_TTL:PT5M}
+    client-side-enabled: ${CACHE_CLIENT_SIDE_ENABLED:true}
+  http-client:
+    connect-timeout: ${HTTP_CONNECT_TIMEOUT:3s}
+    read-timeout: ${HTTP_READ_TIMEOUT:5s}
+  retry:
+    max-attempts: ${RETRY_MAX_ATTEMPTS:3}
+    wait-duration: ${RETRY_WAIT_DURATION:500ms}
+    retryable-statuses: ${RETRY_STATUSES:500,502,503,504}
+  circuit-breaker:
+    sliding-window-size: ${CB_WINDOW_SIZE:10}
+    failure-rate-threshold: ${CB_FAILURE_RATE:50}
+    wait-duration-in-open-state: ${CB_WAIT_OPEN:10s}
+    permitted-calls-in-half-open-state: ${CB_HALF_OPEN_CALLS:3}
+  rate-limiter:
+    limit-for-period: ${RATE_LIMIT:20}
+    limit-refresh-period: ${RATE_REFRESH:1s}
+    timeout-duration: ${RATE_TIMEOUT:0s}
+  metrics:
+    pushgateway:
+      enabled: ${PUSHGATEWAY_ENABLED:false}
+      base-url: ${PUSHGATEWAY_URL:http://localhost:9091}
+      push-rate: ${PUSHGATEWAY_PUSH_RATE:15000}

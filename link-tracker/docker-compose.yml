@@ -1,0 +1,360 @@
+services:
+  kafka1:
+    image: confluentinc/cp-kafka:7.8.0
+    hostname: kafka1
+    container_name: kafka1
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,EXTERNAL://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka1:9092,EXTERNAL://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka1:9093,2@kafka2:9093,3@kafka3:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    ports:
+      - "29092:29092"
+    volumes:
+      - kafka1-data:/var/lib/kafka/data
+    networks:
+      - link-tracker-net
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  kafka2:
+    image: confluentinc/cp-kafka:7.8.0
+    hostname: kafka2
+    container_name: kafka2
+    environment:
+      KAFKA_NODE_ID: 2
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,EXTERNAL://0.0.0.0:29093,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka2:9092,EXTERNAL://localhost:29093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka1:9093,2@kafka2:9093,3@kafka3:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    ports:
+      - "29093:29093"
+    volumes:
+      - kafka2-data:/var/lib/kafka/data
+    networks:
+      - link-tracker-net
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  kafka3:
+    image: confluentinc/cp-kafka:7.8.0
+    hostname: kafka3
+    container_name: kafka3
+    environment:
+      KAFKA_NODE_ID: 3
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,EXTERNAL://0.0.0.0:29094,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka3:9092,EXTERNAL://localhost:29094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka1:9093,2@kafka2:9093,3@kafka3:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    ports:
+      - "29094:29094"
+    volumes:
+      - kafka3-data:/var/lib/kafka/data
+    networks:
+      - link-tracker-net
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.8.0
+    hostname: schema-registry
+    container_name: schema-registry
+    depends_on:
+      kafka1:
+        condition: service_healthy
+      kafka2:
+        condition: service_healthy
+      kafka3:
+        condition: service_healthy
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka1:9092,kafka2:9092,kafka3:9092
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8082
+    ports:
+      - "8082:8082"
+    networks:
+      - link-tracker-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/subjects"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: link-tracker-postgres
+    environment:
+      POSTGRES_DB: scrapper
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - link-tracker-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  valkey1:
+    image: valkey/valkey:8
+    hostname: valkey1
+    container_name: valkey1
+    command: >
+      valkey-server
+      --cluster-enabled yes
+      --cluster-config-file /data/nodes.conf
+      --cluster-node-timeout 5000
+      --cluster-announce-hostname valkey1
+      --cluster-announce-port 6379
+      --cluster-announce-bus-port 16379
+      --port 6379
+      --appendonly yes
+    ports:
+      - "7001:6379"
+    volumes:
+      - valkey1-data:/data
+    networks:
+      - link-tracker-net
+    healthcheck:
+      test: ["CMD", "valkey-cli", "-p", "6379", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  valkey2:
+    image: valkey/valkey:8
+    hostname: valkey2
+    container_name: valkey2
+    command: >
+      valkey-server
+      --cluster-enabled yes
+      --cluster-config-file /data/nodes.conf
+      --cluster-node-timeout 5000
+      --cluster-announce-hostname valkey2
+      --cluster-announce-port 6379
+      --cluster-announce-bus-port 16379
+      --port 6379
+      --appendonly yes
+    ports:
+      - "7002:6379"
+    volumes:
+      - valkey2-data:/data
+    networks:
+      - link-tracker-net
+    healthcheck:
+      test: ["CMD", "valkey-cli", "-p", "6379", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  valkey3:
+    image: valkey/valkey:8
+    hostname: valkey3
+    container_name: valkey3
+    command: >
+      valkey-server
+      --cluster-enabled yes
+      --cluster-config-file /data/nodes.conf
+      --cluster-node-timeout 5000
+      --cluster-announce-hostname valkey3
+      --cluster-announce-port 6379
+      --cluster-announce-bus-port 16379
+      --port 6379
+      --appendonly yes
+    ports:
+      - "7003:6379"
+    volumes:
+      - valkey3-data:/data
+    networks:
+      - link-tracker-net
+    healthcheck:
+      test: ["CMD", "valkey-cli", "-p", "6379", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  valkey-cluster-init:
+    image: valkey/valkey:8
+    container_name: valkey-cluster-init
+    depends_on:
+      valkey1:
+        condition: service_healthy
+      valkey2:
+        condition: service_healthy
+      valkey3:
+        condition: service_healthy
+    command: >
+      valkey-cli --cluster create
+      valkey1:6379 valkey2:6379 valkey3:6379
+      --cluster-replicas 0 --cluster-yes
+    restart: "no"
+    networks:
+      - link-tracker-net
+
+  scrapper:
+    build:
+      context: .
+      dockerfile: scrapper/Dockerfile
+    container_name: link-tracker-scrapper
+    ports:
+      - "8081:8081"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      SCRAPPER_DB_URL: jdbc:postgresql://postgres:5432/scrapper
+      SCRAPPER_DB_USERNAME: postgres
+      SCRAPPER_DB_PASSWORD: postgres
+      KAFKA_BOOTSTRAP_SERVERS: kafka1:9092,kafka2:9092,kafka3:9092
+      SCHEMA_REGISTRY_URL: http://schema-registry:8082
+      VALKEY_HOST: valkey1
+      VALKEY_PORT: 6379
+      BOT_GRPC_HOST: bot
+      BOT_PROTOCOL: kafka-outbox
+      PUSHGATEWAY_ENABLED: "true"
+      PUSHGATEWAY_URL: http://pushgateway:9091
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka1:
+        condition: service_healthy
+      kafka2:
+        condition: service_healthy
+      kafka3:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+      valkey-cluster-init:
+        condition: service_completed_successfully
+    networks:
+      - link-tracker-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  bot:
+    build:
+      context: .
+      dockerfile: bot/Dockerfile
+    container_name: link-tracker-bot
+    ports:
+      - "8080:8080"
+      - "8011:8011"
+      - "8090:8090"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      SCRAPPER_BASE_URL: http://scrapper:8081
+      KAFKA_BOOTSTRAP_SERVERS: kafka1:9092,kafka2:9092,kafka3:9092
+      SCHEMA_REGISTRY_URL: http://schema-registry:8082
+      PUSHGATEWAY_ENABLED: "true"
+      PUSHGATEWAY_URL: http://pushgateway:9091
+    depends_on:
+      scrapper:
+        condition: service_healthy
+    networks:
+      - link-tracker-net
+
+  pushgateway:
+    image: prom/pushgateway:latest
+    container_name: link-tracker-pushgateway
+    ports:
+      - "9091:9091"
+    networks:
+      - link-tracker-net
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: link-tracker-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.enable-lifecycle"
+    networks:
+      - link-tracker-net
+    depends_on:
+      - scrapper
+      - bot
+
+  grafana:
+    image: grafana/grafana-oss:latest
+    container_name: link-tracker-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_FEATURE_TOGGLES_ENABLE: "alertingPreviewUpgrade"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks:
+      - link-tracker-net
+    depends_on:
+      - prometheus
+
+networks:
+  link-tracker-net:
+    driver: bridge
+
+volumes:
+  kafka1-data:
+  kafka2-data:
+  kafka3-data:
+  postgres-data:
+  valkey1-data:
+  valkey2-data:
+  valkey3-data:
+  prometheus-data:
+  grafana-data:

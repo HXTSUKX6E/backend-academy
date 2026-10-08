@@ -1,0 +1,311 @@
+{
+  "id": null,
+  "uid": "linktracker-business",
+  "title": "LinkTracker — Business Metrics",
+  "tags": ["linktracker", "business"],
+  "timezone": "browser",
+  "schemaVersion": 37,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "application",
+        "label": "Application",
+        "type": "custom",
+        "query": "bot,scrapper",
+        "current": { "text": "All", "value": "$__all" },
+        "options": [
+          { "text": "All", "value": "$__all", "selected": true },
+          { "text": "bot", "value": "bot", "selected": false },
+          { "text": "scrapper", "value": "scrapper", "selected": false }
+        ],
+        "hide": 0,
+        "includeAll": true,
+        "multi": false,
+        "skipUrlSync": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "User Messages per Second (Telegram requests)",
+      "description": "Rate of incoming Telegram messages to the bot per second",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(telegram_requests_total{job=~\"$application\"}[5m])) by (job, request_type)",
+          "legendFormat": "{{job}} — {{request_type}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Sent Notifications per Second",
+      "description": "Rate of Telegram notifications sent to users per second",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "rate(sent_notification_total{job=~\"$application\"}[5m])",
+          "legendFormat": "{{job}} — notifications/s",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Active Tracked Links by Domain",
+      "description": "Number of active links in DB on monitoring, split by domain (github.com / stackoverflow.com)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "links_on_track_total{job=~\"$application\"}",
+          "legendFormat": "{{tracked_source}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Active Tracked Links — Current Count",
+      "description": "Current total number of tracked links per domain",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "links_on_track_total{job=~\"$application\"}",
+          "legendFormat": "{{tracked_source}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "palette-classic" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "blue", "value": null }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background"
+      }
+    },
+    {
+      "id": 5,
+      "title": "Scrape Operation Duration Percentiles by Source",
+      "description": "P50, P95, P99 latency of external source scrape operations (github.com / stackoverflow.com)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.50, sum(rate(request_duration_ms_bucket{job=~\"$application\", scope=\"external_source\"}[5m])) by (le, scope_type))",
+          "legendFormat": "P50 — {{scope_type}}",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.95, sum(rate(request_duration_ms_bucket{job=~\"$application\", scope=\"external_source\"}[5m])) by (le, scope_type))",
+          "legendFormat": "P95 — {{scope_type}}",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.99, sum(rate(request_duration_ms_bucket{job=~\"$application\", scope=\"external_source\"}[5m])) by (le, scope_type))",
+          "legendFormat": "P99 — {{scope_type}}",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      }
+    },
+    {
+      "id": 6,
+      "title": "Bot Command Processing Duration Percentiles",
+      "description": "P50, P95, P99 latency of Scrapper API calls from bot, split by method",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.50, sum(rate(command_duration_ms_bucket{job=~\"$application\"}[5m])) by (le, scope_type))",
+          "legendFormat": "P50 — {{scope_type}}",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.95, sum(rate(command_duration_ms_bucket{job=~\"$application\"}[5m])) by (le, scope_type))",
+          "legendFormat": "P95 — {{scope_type}}",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.99, sum(rate(command_duration_ms_bucket{job=~\"$application\"}[5m])) by (le, scope_type))",
+          "legendFormat": "P99 — {{scope_type}}",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      }
+    },
+    {
+      "id": 7,
+      "title": "Bot Commands Rate by Command",
+      "description": "Rate of commands processed by the bot per second, split by command type",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "rate(command_requests_total{job=~\"$application\"}[5m])",
+          "legendFormat": "{{command}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      }
+    },
+    {
+      "id": 8,
+      "title": "Telegram Bot Requests Total",
+      "description": "Cumulative number of Telegram requests received by the bot",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(telegram_requests_total{job=~\"$application\"}) by (job)",
+          "legendFormat": "{{job}} — total requests",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "palette-classic" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background"
+      }
+    }
+  ],
+  "annotations": { "list": [] },
+  "links": [],
+  "alerting": {
+    "list": [
+      {
+        "name": "High RAM Usage Alert",
+        "message": "JVM heap memory usage is critically high (>512MB)",
+        "noDataState": "NoData",
+        "executionErrorState": "Alerting",
+        "conditions": [
+          {
+            "query": {
+              "params": ["A", "5m", "now"]
+            },
+            "reducer": { "params": [], "type": "last" },
+            "evaluator": { "params": [536870912], "type": "gt" },
+            "operator": { "type": "and" }
+          }
+        ]
+      }
+    ]
+  }
+}

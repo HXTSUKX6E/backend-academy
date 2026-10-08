@@ -1,0 +1,171 @@
+# ============================================================
+# LinkTracker — PromQL Query Examples
+# ============================================================
+# Metric naming convention:
+#   Counters:           <name>_total          (Micrometer adds _total suffix)
+#   Gauges:             <name>                (no suffix)
+#   DistributionSummary (Histogram):
+#       <name>_bucket   — histogram buckets (use with histogram_quantile)
+#       <name>_count    — observation count
+#       <name>_sum      — sum of all observations
+#
+# Application job labels:
+#   job="scrapper"  — scrapper service (port 8081)
+#   job="bot"       — bot service (metrics port 8011)
+# ============================================================
+
+
+# ============================================================
+# STANDARD RED METRICS (parameterized by $application variable)
+# ============================================================
+
+# --- RATE: HTTP requests per second ---
+sum(rate(http_server_requests_seconds_count{job="$application"}[5m])) by (uri, method)
+
+# --- ERRORS: HTTP error rate per second ---
+sum(rate(http_server_requests_seconds_count{job="$application", outcome=~"CLIENT_ERROR|SERVER_ERROR"}[5m])) by (status, uri)
+
+# --- ERRORS: Error percentage from total ---
+sum(rate(http_server_requests_seconds_count{job="$application", outcome=~"CLIENT_ERROR|SERVER_ERROR"}[5m]))
+/
+sum(rate(http_server_requests_seconds_count{job="$application"}[5m])) * 100
+
+# --- DURATION: HTTP request latency P50 ---
+histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{job="$application"}[5m])) by (le))
+
+# --- DURATION: HTTP request latency P95 ---
+histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job="$application"}[5m])) by (le))
+
+# --- DURATION: HTTP request latency P99 ---
+histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job="$application"}[5m])) by (le))
+
+
+# ============================================================
+# MEMORY METRICS
+# ============================================================
+
+# --- JVM Heap memory used by pool ---
+sum(jvm_memory_used_bytes{job="$application", area="heap"}) by (id)
+
+# --- JVM Non-Heap memory used by pool ---
+sum(jvm_memory_used_bytes{job="$application", area="nonheap"}) by (id)
+
+# --- Total JVM Heap memory used ---
+sum(jvm_memory_used_bytes{job="$application", area="heap"})
+
+# --- JVM Heap memory max available ---
+sum(jvm_memory_max_bytes{job="$application", area="heap"})
+
+# --- Heap usage percentage ---
+sum(jvm_memory_used_bytes{job="$application", area="heap"})
+/
+sum(jvm_memory_max_bytes{job="$application", area="heap"}) * 100
+
+
+# ============================================================
+# BUSINESS METRICS — SCRAPPER SERVICE
+# ============================================================
+
+# --- links_on_track_total: Active tracked links by domain ---
+links_on_track_total{job="scrapper"}
+
+# Split by domain:
+links_on_track_total{job="scrapper", tracked_source="github"}
+links_on_track_total{job="scrapper", tracked_source="stackoverflow"}
+
+# --- request_duration_ms: Scrape operation duration percentiles by source type ---
+# P50 for all external sources:
+histogram_quantile(0.50, sum(rate(request_duration_ms_bucket{job="scrapper", scope="external_source"}[5m])) by (le, scope_type))
+
+# P95 for github.com:
+histogram_quantile(0.95, sum(rate(request_duration_ms_bucket{job="scrapper", scope="external_source", scope_type="github.com"}[5m])) by (le))
+
+# P99 for stackoverflow.com:
+histogram_quantile(0.99, sum(rate(request_duration_ms_bucket{job="scrapper", scope="external_source", scope_type="stackoverflow.com"}[5m])) by (le))
+
+# All percentiles for all external sources:
+histogram_quantile(0.50, sum(rate(request_duration_ms_bucket{job="scrapper", scope="external_source"}[5m])) by (le, scope_type))
+histogram_quantile(0.95, sum(rate(request_duration_ms_bucket{job="scrapper", scope="external_source"}[5m])) by (le, scope_type))
+histogram_quantile(0.99, sum(rate(request_duration_ms_bucket{job="scrapper", scope="external_source"}[5m])) by (le, scope_type))
+
+# Database operation duration (scope=database, scope_type=links):
+histogram_quantile(0.95, sum(rate(request_duration_ms_bucket{job="scrapper", scope="database"}[5m])) by (le, scope_type))
+
+# --- api_requests_total: External API request rate ---
+rate(api_requests_total{job="scrapper"}[5m])
+
+# Split by source:
+rate(api_requests_total{job="scrapper", source="github"}[5m])
+rate(api_requests_total{job="scrapper", source="stackoverflow"}[5m])
+
+# Total API requests over last hour:
+increase(api_requests_total{job="scrapper"}[1h])
+
+
+# ============================================================
+# BUSINESS METRICS — BOT SERVICE
+# ============================================================
+
+# --- telegram_requests_total: User messages per second (by request type: command/message) ---
+rate(telegram_requests_total{job="bot"}[5m])
+
+# Split by request_type (command = starts with /, message = plain text):
+rate(telegram_requests_total{job="bot", request_type="command"}[5m])
+rate(telegram_requests_total{job="bot", request_type="message"}[5m])
+
+# Total Telegram requests (all types):
+sum(telegram_requests_total{job="bot"})
+
+# --- command_requests_total: Bot commands processed ---
+rate(command_requests_total{job="bot"}[5m])
+
+# Split by command:
+rate(command_requests_total{job="bot"}[5m]) by (command)
+# or equivalently:
+sum(rate(command_requests_total{job="bot"}[5m])) by (command)
+
+# Most popular commands (top 5):
+topk(5, sum(increase(command_requests_total{job="bot"}[1h])) by (command))
+
+# --- command_duration_ms: Scrapper API call duration from bot ---
+# P50, P95, P99 by scrapper method:
+histogram_quantile(0.50, sum(rate(command_duration_ms_bucket{job="bot"}[5m])) by (le, scope_type))
+histogram_quantile(0.95, sum(rate(command_duration_ms_bucket{job="bot"}[5m])) by (le, scope_type))
+histogram_quantile(0.99, sum(rate(command_duration_ms_bucket{job="bot"}[5m])) by (le, scope_type))
+
+# P95 for addLink specifically:
+histogram_quantile(0.95, sum(rate(command_duration_ms_bucket{job="bot", scope_type="addLink"}[5m])) by (le))
+
+# --- sent_notification_total: Notifications sent to users ---
+rate(sent_notification_total{job="bot"}[5m])
+
+# Total notifications sent:
+sent_notification_total{job="bot"}
+
+# Notifications over last hour:
+increase(sent_notification_total{job="bot"}[1h])
+
+
+# ============================================================
+# BONUS — GRAFANA RAM ALERT QUERY
+# (used in the provisioned alert rule for high heap memory)
+# ============================================================
+
+# Alert fires when JVM heap > 512MB for any service:
+sum(jvm_memory_used_bytes{area="heap"}) by (job) > 536870912
+
+
+# ============================================================
+# COMBINED QUERIES (multi-service view)
+# ============================================================
+
+# Total active links (all domains, all services):
+sum(links_on_track_total)
+
+# All scrape operation P95 durations in one view:
+histogram_quantile(0.95, sum(rate(request_duration_ms_bucket{scope="external_source"}[5m])) by (le, job, scope_type))
+
+# Command throughput vs notification throughput:
+rate(command_requests_total{job="bot"}[5m])
+# vs
+rate(sent_notification_total{job="bot"}[5m])
